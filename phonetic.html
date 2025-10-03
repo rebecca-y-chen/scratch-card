@@ -1,131 +1,732 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>注音符號拼讀遊戲</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      font-family: 'Inter', 'Noto Sans TC', sans-serif;
-      background-color: #f7f7f7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .click-tile {
-      cursor: pointer;
-      user-select: none;
-      transition: transform 0.15s, background-color 0.15s, opacity 0.3s;
-      border: 2px solid transparent;
-    }
-    .click-tile:hover {
-      transform: scale(1.05);
-      background-color: #fcd34d;
-    }
-    .click-tile.selected {
-      opacity: 0.3;
-      pointer-events: none;
-    }
-    .drop-zone {
-      border: 3px dashed #9ca3af;
-      transition: background-color 0.2s;
-      cursor: pointer;
-    }
-    .drop-zone:hover:not(.completed-answer) {
-      background-color: #fef3c7;
-    }
-    .drop-zone.completed-answer {
-      background-color: #3b82f6;
-      color: #ffffff;
-      border-style: solid;
-      border-color: #2563eb;
-    }
-    #chinese-hint {
-      font-size: clamp(3rem, 10vw, 5rem);
-    }
-    .pinyin-group {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .drop-zone[data-type="tone"] {
-      width: 4rem; height: 4rem; font-size: 1.875rem;
-    }
-    .drop-zone[data-type="initial"], .drop-zone[data-type="final"] {
-      width: 6rem; height: 6rem; font-size: 2.25rem;
-    }
-    @media (min-width: 640px) {
-      .drop-zone[data-type="tone"] {
-        width: 5rem; height: 5rem; font-size: 3rem;
-      }
-      .drop-zone[data-type="initial"], .drop-zone[data-type="final"] {
-        width: 8rem; height: 8rem; font-size: 3.75rem;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注音符號拼讀點選遊戲</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用教育部推薦的字體 (如: Inter)，並增加注音符號的辨識度 */
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        /* 點選元件樣式 */
+        .click-tile {
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.15s ease-out, background-color 0.15s ease-out, opacity 0.3s;
+            border: 2px solid transparent;
+        }
+        .click-tile:hover {
+            transform: scale(1.05);
+            background-color: #fcd34d; /* 淺黃色 */
+        }
+        .click-tile.selected {
+            opacity: 0.3; /* 選中後變淡，表示已被使用 */
+            pointer-events: none; /* 禁用點擊 */
+        }
+        /* 放置區樣式 */
+        .drop-zone {
+            border: 3px dashed #9ca3af; /* 灰色虛線 */
+            transition: background-color 0.2s;
+            cursor: pointer; /* 點擊可移除 */
+        }
+        .drop-zone:hover:not(.completed-answer) {
+            background-color: #fef3c7; /* 淺黃色提示可點擊 */
+        }
+        .drop-zone.completed-answer {
+            background-color: #3b82f6; /* 藍色背景 (已填入) */
+            color: #ffffff;
+            border-style: solid;
+            border-color: #2563eb;
+        }
+        /* 調整國字提示字體大小以容納二字詞 */
+        #chinese-hint {
+            font-size: clamp(3rem, 10vw, 5rem); /* RWD 字體大小 */
+        }
+        /* Pinyin Group wrapper for consistent spacing */
+        .pinyin-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem; /* Space between initial, final, tone */
+        }
+        /* 調整放置區大小 */
+        .drop-zone[data-type="tone"] {
+            width: 4rem; 
+            height: 4rem; 
+            font-size: 1.875rem; 
+        }
+        .drop-zone[data-type="initial"], 
+        .drop-zone[data-type="final"] {
+            width: 6rem; 
+            height: 6rem; 
+            font-size: 2.25rem; 
+        }
+        @media (min-width: 640px) {
+            .drop-zone[data-type="tone"] {
+                width: 5rem; 
+                height: 5rem; 
+                font-size: 3rem; 
+            }
+            .drop-zone[data-type="initial"], 
+            .drop-zone[data-type="final"] {
+                width: 8rem; 
+                height: 8rem; 
+                font-size: 3.75rem; 
+            }
+        }
+    </style>
 </head>
 <body class="p-4 sm:p-8">
-  <div class="max-w-5xl w-full bg-white shadow-2xl rounded-xl p-6 sm:p-10 border-4 border-yellow-400">
-    <h1 class="text-4xl sm:text-5xl font-extrabold text-center text-red-600 mb-6">注音符號點選拼讀</h1>
-    <div class="flex justify-between items-center mb-8 border-b-2 pb-4">
-      <div class="text-xl sm:text-2xl font-bold text-gray-700">計時器: <span id="timer" class="text-red-500 text-3xl sm:text-4xl ml-2">3:00</span></div>
-      <div class="text-xl sm:text-2xl font-bold text-gray-700">分數: <span id="score" class="text-blue-500 text-3xl sm:text-4xl ml-2">0</span></div>
+
+    <div id="game-container" class="w-full max-w-5xl bg-white shadow-2xl rounded-xl p-6 sm:p-10 border-4 border-yellow-400">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-center text-red-600 mb-6 tracking-wide">
+            注音符號點選拼讀
+        </h1>
+
+        <!-- 遊戲資訊：計時器與分數 -->
+        <div class="flex justify-between items-center mb-8 border-b-2 pb-4">
+            <div class="text-xl sm:text-2xl font-bold text-gray-700">
+                計時器: <span id="timer" class="text-red-500 text-3xl sm:text-4xl ml-2">3:00</span>
+            </div>
+            <div class="text-xl sm:text-2xl font-bold text-gray-700">
+                分數: <span id="score" class="text-blue-500 text-3xl sm:text-4xl ml-2">0</span>
+            </div>
+        </div>
+
+        <!-- 遊戲區塊 -->
+        <div id="game-area">
+            <!-- 題目區塊 -->
+            <div class="mb-8 text-center bg-yellow-100 p-4 rounded-lg shadow-inner">
+                
+                <!-- 國字提示區塊 + 語音按鈕 -->
+                <div class="flex flex-col items-center justify-center mb-6">
+                    <div id="chinese-hint" class="font-extrabold text-red-700 p-4 bg-white rounded-xl shadow-lg mb-4">
+                        <!-- 國字會在這裡顯示 -->
+                    </div>
+                    <!-- 語音播放按鈕 -->
+                    <button id="speak-button" class="bg-red-500 text-white p-4 rounded-full shadow-xl hover:bg-red-600 transition duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <!-- Speaker Icon -->
+                        <svg id="speaker-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                        <!-- Loading Spinner -->
+                        <div id="loading-spinner" class="hidden h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </button>
+                    <p class="text-sm mt-2 text-red-500 font-semibold">（點擊上方按鈕聽**目標發音**）</p>
+                </div>
+                
+                <p class="text-2xl sm:text-3xl font-semibold text-gray-800 mb-3">點擊注音符號，將它填入正確位置：</p>
+                
+                <!-- 放置區塊 - 已調整為兩組 -->
+                <div id="all-drop-zones" class="flex flex-wrap justify-center items-center">
+                    
+                    <!-- 第 1 個字 Pinyin Group -->
+                    <div class="pinyin-group" id="pinyin-group-1">
+                        <div id="initial-drop-1" data-type="initial" data-char="1" class="drop-zone rounded-xl flex items-center justify-center bg-white shadow-md text-gray-500">聲母</div>
+                        <div id="final-drop-1" data-type="final" data-char="1" class="drop-zone rounded-xl flex items-center justify-center bg-white shadow-md text-gray-500">韻母</div>
+                        <div id="tone-drop-1" data-type="tone" data-char="1" class="drop-zone rounded-full flex items-center justify-center bg-white shadow-md text-gray-500">聲調</div>
+                    </div>
+                    
+                    <!-- 分隔符號 (雙字詞時顯示) -->
+                    <div id="separator" class="hidden text-5xl sm:text-6xl font-bold text-gray-500 mx-4 sm:mx-6 my-2">|</div> 
+
+                    <!-- 第 2 個字 Pinyin Group (雙字詞時才顯示) -->
+                    <div class="pinyin-group hidden" id="pinyin-group-2">
+                        <div id="initial-drop-2" data-type="initial" data-char="2" class="drop-zone rounded-xl flex items-center justify-center bg-white shadow-md text-gray-500">聲母</div>
+                        <div id="final-drop-2" data-type="final" data-char="2" class="drop-zone rounded-xl flex items-center justify-center bg-white shadow-md text-gray-500">韻母</div>
+                        <div id="tone-drop-2" data-type="tone" data-char="2" class="drop-zone rounded-full flex items-center justify-center bg-white shadow-md text-gray-500">聲調</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 點選元件區塊 (會動態填充，分為三區) -->
+            <div id="click-options-container" class="bg-blue-100 p-4 sm:p-6 rounded-lg shadow-lg">
+                <p class="text-xl sm:text-2xl font-bold text-blue-800 mb-3 text-center">點擊選擇注音符號（每區僅顯示 5 個選項）：</p>
+                
+                <!-- 聲母選項區 -->
+                <h3 class="text-lg font-bold text-gray-700 mt-4 mb-2 border-b">聲母 (Initial)</h3>
+                <div id="initial-options" class="flex flex-wrap justify-center gap-2 sm:gap-3 p-2">
+                    <!-- 聲母選項將在此處渲染 (最多 5 個) -->
+                </div>
+                
+                <!-- 韻母選項區 -->
+                <h3 class="text-lg font-bold text-gray-700 mt-4 mb-2 border-b">韻母 (Final)</h3>
+                <div id="final-options" class="flex flex-wrap justify-center gap-2 sm:gap-3 p-2">
+                    <!-- 韻母選項將在此處渲染 (最多 5 個) -->
+                </div>
+                
+                <!-- 聲調選項區 -->
+                <h3 class="text-lg font-bold text-gray-700 mt-4 mb-2 border-b">聲調 (Tone)</h3>
+                <div id="tone-options" class="flex flex-wrap justify-center gap-2 sm:gap-3 p-2">
+                    <!-- 聲調選項將在此處渲染 (最多 5 個) -->
+                </div>
+            </div>
+
+            <!-- 提示區塊 (顯示拼出的字，幫助小一生確認) -->
+            <div class="mt-6 text-center">
+                <p class="text-xl sm:text-2xl font-semibold text-gray-700">
+                    目前拼出的音：
+                    <span id="pinyin-display" class="text-gray-400 text-4xl sm:text-5xl font-extrabold ml-2">
+                        _ _ _
+                    </span>
+                </p>
+                <button id="next-button" class="mt-4 px-6 py-3 bg-green-500 text-white text-xl font-bold rounded-full shadow-lg hover:bg-green-600 transition duration-300 transform hover:scale-105" disabled>
+                    下一題 (完成後啟用)
+                </button>
+            </div>
+        </div>
+
+        <!-- 結果區塊 (遊戲結束後顯示) -->
+        <div id="result-area" class="hidden text-center p-8 bg-green-50 border-4 border-green-500 rounded-xl shadow-2xl">
+            <h2 class="text-5xl font-extrabold text-green-700 mb-6">時間到！遊戲結束！</h2>
+            <p class="text-3xl font-bold text-gray-800 mb-4">
+                您的最終得分：<span id="final-score" class="text-red-600 text-6xl ml-3">0</span> 題
+            </p>
+            <p class="text-xl text-gray-600 mb-8">表現很棒！休息一下再挑戰一次吧！</p>
+            <button onclick="window.location.reload()" class="px-8 py-4 bg-red-500 text-white text-2xl font-bold rounded-full shadow-xl hover:bg-red-600 transition duration-300 transform hover:scale-105">
+                再玩一次
+            </button>
+        </div>
+
+        <!-- 錯誤訊息/操作提示 (自定義 modal，取代 alert) -->
+        <div id="modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4">
+            <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full text-center border-t-8 border-red-500">
+                <p id="modal-message" class="text-xl font-semibold text-gray-700 mb-4">錯誤！</p>
+                <button onclick="document.getElementById('modal').classList.add('hidden'); document.getElementById('modal').classList.remove('flex');" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    確定
+                </button>
+            </div>
+        </div>
     </div>
-    <div id="chinese-hint" class="text-center font-extrabold text-red-700 p-4 bg-white rounded-xl shadow mb-4"></div>
-    <div class="flex justify-center">
-      <button id="speak-button" class="bg-red-500 text-white p-4 rounded-full shadow-xl hover:bg-red-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-        <svg id="speaker-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-        </svg>
-        <div id="loading-spinner" class="hidden h-6 w-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-      </button>
-    </div>
-  </div>
 
-  <script>
-    const speakButtonEl = document.getElementById('speak-button');
-    const speakerIconEl = document.getElementById('speaker-icon');
-    const loadingSpinnerEl = document.getElementById('loading-spinner');
-    const chineseHintEl = document.getElementById('chinese-hint');
+    <script>
+        // --- 遊戲資料與設定 ---
+        const GAME_DURATION = 180; // 3分鐘 = 180秒
+        let timeLeft = GAME_DURATION;
+        let timerInterval;
+        let score = 0;
+        let currentQuestionIndex = 0;
+        
+        // 統一的注音符號拼讀題目結構 (與前一版本相同)
+        const QUESTIONS = [
+            // 單字
+            { id: 1, chinese: '巴', sound: 'ㄅㄚˉ', pinyin: [{ i: 'ㄅ', f: 'ㄚ', t: 'ˉ' }] },
+            { id: 2, chinese: '坡', sound: 'ㄆㄛˊ', pinyin: [{ i: 'ㄆ', f: 'ㄛ', t: 'ˊ' }] },
+            { id: 3, chinese: '米', sound: 'ㄇㄧˇ', pinyin: [{ i: 'ㄇ', f: 'ㄧ', t: 'ˇ' }] },
+            { id: 4, chinese: '父', sound: 'ㄈㄨˋ', pinyin: [{ i: 'ㄈ', f: 'ㄨ', t: 'ˋ' }] },
+            { id: 5, chinese: '的', sound: 'ㄉㄜ', pinyin: [{ i: 'ㄉ', f: 'ㄜ', t: 'ˉ' }] },
+            { id: 6, chinese: '台', sound: 'ㄊㄞˊ', pinyin: [{ i: 'ㄊ', f: 'ㄞ', t: 'ˊ' }] },
+            { id: 7, chinese: '樓', sound: 'ㄌㄡˇ', pinyin: [{ i: 'ㄌ', f: 'ㄡ', t: 'ˇ' }] },
+            { id: 8, chinese: '號', sound: 'ㄏㄠˋ', pinyin: [{ i: 'ㄏ', f: 'ㄠ', t: 'ˋ' }] },
+            { id: 9, chinese: '決', sound: 'ㄐㄩㄝ', pinyin: [{ i: 'ㄐ', f: 'ㄩㄝ', t: 'ˉ' }] },
+            { id: 10, chinese: '牆', sound: 'ㄑㄧㄤˊ', pinyin: [{ i: 'ㄑ', f: 'ㄧㄤ', t: 'ˊ' }] },
+            { id: 11, chinese: '朽', sound: 'ㄒㄧㄡˇ', pinyin: [{ i: 'ㄒ', f: 'ㄧㄡ', t: 'ˇ' }] },
+            { id: 12, chinese: '墜', sound: 'ㄓㄨㄟˋ', pinyin: [{ i: 'ㄓ', f: 'ㄨㄟ', t: 'ˋ' }] },
+            
+            // 雙字詞
+            { id: 13, chinese: '蘋果', sound: 'ㄆㄧㄥˊ ㄍㄨㄛˇ', pinyin: [{ i: 'ㄆ', f: 'ㄧㄥ', t: 'ˊ' }, { i: 'ㄍ', f: 'ㄨㄛ', t: 'ˇ' }] },
+            { id: 14, chinese: '學校', sound: 'ㄒㄩㄝˊ ㄒㄧㄠˋ', pinyin: [{ i: 'ㄒ', f: 'ㄩㄝ', t: 'ˊ' }, { i: 'ㄒ', f: 'ㄧㄠ', t: 'ˋ' }] },
+            { id: 15, chinese: '鉛筆', sound: 'ㄑㄧㄢ ㄅㄧˇ', pinyin: [{ i: 'ㄑ', f: 'ㄧㄢ', t: 'ˉ' }, { i: 'ㄅ', f: 'ㄧ', t: 'ˇ' }] },
+            { id: 16, chinese: '電腦', sound: 'ㄉㄧㄢˋ ㄋㄠˇ', pinyin: [{ i: 'ㄉ', f: 'ㄧㄢ', t: 'ˋ' }, { i: 'ㄋ', f: 'ㄠ', t: 'ˇ' }] },
+            { id: 17, chinese: '蝴蝶', sound: 'ㄏㄨˊ ㄉㄧㄝˊ', pinyin: [{ i: 'ㄏ', f: 'ㄨ', t: 'ˊ' }, { i: 'ㄉ', f: 'ㄧㄝ', t: 'ˊ' }] },
+        ];
 
-    const sampleSound = 'ㄏㄨˊ ㄉㄧㄝˊ';
-    chineseHintEl.textContent = '蝴蝶'; // 測試用文字
+        // 完整的注音符號庫
+        const INITIAL_TILES = ['ㄅ', 'ㄆ', 'ㄇ', 'ㄈ', 'ㄉ', 'ㄊ', 'ㄋ', 'ㄌ', 'ㄍ', 'ㄎ', 'ㄏ', 'ㄐ', 'ㄑ', 'ㄒ', 'ㄓ', 'ㄔ', 'ㄕ', 'ㄖ', 'ㄗ', 'ㄘ', 'ㄙ'];
+        const FINAL_TILES = ['ㄚ', 'ㄛ', 'ㄜ', 'ㄝ', 'ㄞ', 'ㄟ', 'ㄠ', 'ㄡ', 'ㄢ', 'ㄣ', 'ㄤ', 'ㄥ', 'ㄦ', 'ㄧ', 'ㄨ', 'ㄩ', 'ㄧㄚ', 'ㄧㄝ', 'ㄧㄠ', 'ㄧㄡ', 'ㄧㄢ', 'ㄧㄣ', 'ㄧㄤ', 'ㄧㄥ', 'ㄨㄚ', 'ㄨㄛ', 'ㄨㄞ', 'ㄨㄟ', 'ㄨㄢ', 'ㄨㄣ', 'ㄨㄤ', 'ㄨㄥ', 'ㄩㄝ', 'ㄩㄢ', 'ㄩㄣ', 'ㄩㄥ']; 
+        const TONE_TILES = ['ˉ', 'ˊ', 'ˇ', 'ˋ', '˙'];
 
+        const TILE_MAP = {
+            'initial': INITIAL_TILES,
+            'final': FINAL_TILES,
+            'tone': TONE_TILES
+        };
+        const MAX_OPTIONS_COUNT = 5; // 限制選項數量為 5
+
+      
+
+        // --- DOM 元素快取 ---
+        const timerEl = document.getElementById('timer');
+        const scoreEl = document.getElementById('score');
+        const gameAreaEl = document.getElementById('game-area');
+        const resultAreaEl = document.getElementById('result-area');
+        const initialOptionsEl = document.getElementById('initial-options');
+        const finalOptionsEl = document.getElementById('final-options');
+        const toneOptionsEl = document.getElementById('tone-options');
+        const pinyinDisplayEl = document.getElementById('pinyin-display');
+        const nextButtonEl = document.getElementById('next-button');
+        const modalEl = document.getElementById('modal');
+        const chineseHintEl = document.getElementById('chinese-hint');
+        const speakButtonEl = document.getElementById('speak-button');
+        const speakerIconEl = document.getElementById('speaker-icon');
+        const loadingSpinnerEl = document.getElementById('loading-spinner');
+
+        // 快取放置區 DOM 元素
+        const dropZones = [
+            { i: document.getElementById('initial-drop-1'), f: document.getElementById('final-drop-1'), t: document.getElementById('tone-drop-1') },
+            { i: document.getElementById('initial-drop-2'), f: document.getElementById('final-drop-2'), t: document.getElementById('tone-drop-2') }
+        ];
+        const pinyinGroup2El = document.getElementById('pinyin-group-2');
+        const separatorEl = document.getElementById('separator');
+
+
+        // --- 工具函數 (TTS 音訊處理) ---
+        function showModal(message) {
+            document.getElementById('modal-message').textContent = message;
+            modalEl.classList.remove('hidden');
+            modalEl.classList.add('flex');
+        }
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+        function pcmToWav(pcm16, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcm16.byteLength);
+            const view = new DataView(buffer);
+            const channelCount = 1;
+            const byteRate = sampleRate * channelCount * 2;
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcm16.byteLength, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, channelCount, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, channelCount * 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcm16.byteLength, true);
+            let offset = 44;
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+            return new Blob([view], { type: 'audio/wav' });
+        }
+        
     function speakQuestionSound(text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'zh-TW';
-      utterance.rate = 0.85;
-      utterance.pitch = 1;
-      utterance.volume = 1;
+    speakButtonEl.disabled = true;
+    speakerIconEl.classList.add('hidden');
+    loadingSpinnerEl.classList.remove('hidden');
 
-      speakButtonEl.disabled = true;
-      speakerIconEl.classList.add('hidden');
-      loadingSpinnerEl.classList.remove('hidden');
+    // 將空白與特殊符號轉成合法檔名（例如：ㄏㄨˊ ㄉㄧㄝˊ → ㄏㄨˊ_ㄉㄧㄝˊ）
+    const filename = text.replace(/\s+/g, '_') + '.mp3';
+    const audio = new Audio(`audio/${filename}`);
 
-      utterance.onend = () => {
-        speakButtonEl.disabled = false;
-        speakerIconEl.classList.remove('hidden');
-        loadingSpinnerEl.classList.add('hidden');
-      };
+    audio.play()
+        .then(() => {
+            audio.onended = () => {
+                speakButtonEl.disabled = false;
+                speakerIconEl.classList.remove('hidden');
+                loadingSpinnerEl.classList.add('hidden');
+            };
+        })
+        .catch(err => {
+            console.error("播放音訊時發生錯誤：", err);
+            showModal("語音無法播放，請檢查是否有對應音檔");
+            speakButtonEl.disabled = false;
+            speakerIconEl.classList.remove('hidden');
+            loadingSpinnerEl.classList.add('hidden');
+        });
+}
 
-      utterance.onerror = (err) => {
-        console.error("SpeechSynthesis 播放錯誤：", err);
-        alert("語音播放失敗，請稍後再試。");
-        speakButtonEl.disabled = false;
-        speakerIconEl.classList.remove('hidden');
-        loadingSpinnerEl.classList.add('hidden');
-      };
 
-      window.speechSynthesis.speak(utterance);
-    }
+        // --- 遊戲邏輯：點擊模式 (新增動態選項生成) ---
 
-    speakButtonEl.addEventListener('click', () => {
-      speakQuestionSound(sampleSound);
-    });
-  </script>
+        /**
+         * 產生包含正確答案且總數為 MAX_OPTIONS_COUNT (5) 的不重複選項。
+         * @param {string} type - 類型 (initial, final, tone)
+         * @param {string[]} requiredValues - 該題正確答案所需的所有符號
+         * @returns {string[]} 包含正確答案的最多 5 個選項
+         */
+        function getLimitedOptions(type, requiredValues) {
+            const allOptions = TILE_MAP[type];
+            const optionSet = new Set(requiredValues); // 1. 先加入所有正確答案
+
+            // 2. 隨機加入其他不重複的選項，直到達到最大限制或選項用盡
+            let attempts = 0;
+            const maxAttempts = allOptions.length * 2; // 安全限制
+            while (optionSet.size < MAX_OPTIONS_COUNT && optionSet.size < allOptions.length && attempts < maxAttempts) {
+                const randomIndex = Math.floor(Math.random() * allOptions.length);
+                const randomTile = allOptions[randomIndex];
+                // 確保加入的不是已有的
+                optionSet.add(randomTile);
+                attempts++;
+            }
+            
+            return Array.from(optionSet);
+        }
+
+        /**
+         * 渲染動態產生的 5 個選項
+         */
+        function generateAndRenderOptions() {
+            const currentQ = QUESTIONS[currentQuestionIndex];
+            
+            // 1. 收集該題所需的正確注音符號
+            const requiredInitials = [];
+            const requiredFinals = [];
+            const requiredTones = [];
+
+            currentQ.pinyin.forEach(p => {
+                requiredInitials.push(p.i);
+                requiredFinals.push(p.f);
+                requiredTones.push(p.t);
+            });
+
+            // 2. 產生包含正確答案的限量選項集
+            const initialTilesLimited = getLimitedOptions('initial', requiredInitials);
+            const finalTilesLimited = getLimitedOptions('final', requiredFinals);
+            const toneTilesLimited = getLimitedOptions('tone', requiredTones);
+
+            // 清空所有選項區
+            initialOptionsEl.innerHTML = '';
+            finalOptionsEl.innerHTML = '';
+            toneOptionsEl.innerHTML = '';
+
+            const renderTiles = (container, tiles, type) => {
+                shuffleArray(tiles); // 打亂選項順序
+                tiles.forEach(value => {
+                    const div = document.createElement('div');
+                    div.textContent = value;
+                    div.dataset.value = value;
+                    div.dataset.type = type;
+                    div.classList.add('click-tile', 'bg-white', 'text-gray-800', 'text-3xl', 'sm:text-4xl', 'font-bold', 'rounded-lg', 'shadow-md', 'p-3', 'sm:p-4', 'w-16', 'h-16', 'sm:w-20', 'sm:h-20', 'flex', 'items-center', 'justify-center', 'transform', 'hover:shadow-lg', 'border-blue-400');
+                    
+                    div.addEventListener('click', handleTileClick);
+                    container.appendChild(div);
+                });
+            };
+
+            // 3. 渲染有限的選項
+            renderTiles(initialOptionsEl, initialTilesLimited, 'initial');
+            renderTiles(finalOptionsEl, finalTilesLimited, 'final');
+            renderTiles(toneOptionsEl, toneTilesLimited, 'tone');
+        }
+
+        /**
+         * 檢查所有拼讀區是否都被正確填滿
+         * @returns {boolean}
+         */
+        function checkCompletion() {
+            const currentQ = QUESTIONS[currentQuestionIndex];
+            let isComplete = true;
+
+            for (let i = 0; i < currentQ.pinyin.length; i++) {
+                const expected = currentQ.pinyin[i];
+                const group = dropZones[i]; // group 0 is char 1, group 1 is char 2
+                
+                // 檢查是否與期望值匹配
+                if (group.i.dataset.value !== expected.i ||
+                    group.f.dataset.value !== expected.f ||
+                    group.t.dataset.value !== expected.t) {
+                    isComplete = false;
+                    break;
+                }
+            }
+            return isComplete;
+        }
+
+        /**
+         * 更新目前拼讀區的顯示
+         */
+        function updatePinyinDisplay() {
+            const currentQ = QUESTIONS[currentQuestionIndex];
+            let pinyinText = [];
+            
+            for (let i = 0; i < currentQ.pinyin.length; i++) {
+                const group = dropZones[i];
+                const initial = group.i.dataset.value || '_';
+                const final = group.f.dataset.value || '_';
+                const tone = group.t.dataset.value || '_';
+                
+                pinyinText.push(`${initial}${final}${tone}`);
+            }
+            
+            pinyinDisplayEl.textContent = pinyinText.join(' ');
+
+
+            if (checkCompletion()) {
+                pinyinDisplayEl.textContent = currentQ.sound;
+                pinyinDisplayEl.classList.add('text-green-600');
+                pinyinDisplayEl.classList.remove('text-gray-400');
+                nextButtonEl.disabled = false;
+
+                // 為正確填入的 drop zone 添加最終樣式 (僅視覺確認，點擊可移除)
+                document.querySelectorAll('.drop-zone').forEach(el => {
+                    if(el.dataset.value) {
+                         el.classList.add('completed-answer');
+                         el.classList.remove('bg-white', 'text-gray-500');
+                    }
+                });
+
+            } else {
+                pinyinDisplayEl.classList.remove('text-green-600');
+                pinyinDisplayEl.classList.add('text-gray-400');
+                nextButtonEl.disabled = true;
+
+                // 移除完成樣式
+                document.querySelectorAll('.drop-zone').forEach(el => {
+                    el.classList.remove('completed-answer');
+                });
+            }
+        }
+
+        /**
+         * 處理點擊選項區注音符號的事件
+         */
+        function handleTileClick(e) {
+            const clickedTile = e.currentTarget;
+            const value = clickedTile.dataset.value;
+            const type = clickedTile.dataset.type;
+
+            const currentQ = QUESTIONS[currentQuestionIndex];
+            
+            let targetDropZone = null;
+
+            // 尋找第一個匹配類型且為空的放置區
+            for (let i = 0; i < currentQ.pinyin.length; i++) {
+                const expectedPinyin = currentQ.pinyin[i];
+                const group = dropZones[i]; // group 0 is char 1, group 1 is char 2
+                let dropEl = null;
+                let expectedValue = '';
+
+                if (type === 'initial') {
+                    dropEl = group.i;
+                    expectedValue = expectedPinyin.i;
+                } else if (type === 'final') {
+                    dropEl = group.f;
+                    expectedValue = expectedPinyin.f;
+                } else if (type === 'tone') {
+                    dropEl = group.t;
+                    expectedValue = expectedPinyin.t;
+                }
+
+                // 如果找到空的放置區
+                if (dropEl && !dropEl.dataset.value) {
+                    // 檢查正確性 (確保該符號是題目這個位置所需要的)
+                    if (value === expectedValue) {
+                        targetDropZone = dropEl;
+                        break; // 找到第一個正確的空格，立即停止
+                    } else {
+                        // 雖然是空的，但是填錯了！ (此符號是錯誤的干擾項)
+                        showModal(`您選擇的符號 (${value}) 並不屬於此題答案的一部分！請再試一次。`);
+                        return;
+                    }
+                }
+            }
+
+            if (targetDropZone) {
+                // 成功填入
+                targetDropZone.textContent = value;
+                targetDropZone.dataset.value = value;
+                targetDropZone.classList.remove('bg-white', 'text-gray-500');
+                targetDropZone.classList.add('text-white', 'bg-blue-500');
+
+                // 隱藏選項
+                clickedTile.classList.add('selected');
+                clickedTile.style.opacity = '0.3';
+                clickedTile.style.pointerEvents = 'none';
+
+                updatePinyinDisplay();
+
+            } else {
+                // 沒有空的正確位置
+                showModal(`該類型的所有正確位置都已填滿！如需更改，請點擊已填入的注音符號。`);
+            }
+        }
+        
+        /**
+         * 處理點擊已填入的放置區的事件 (還原)
+         */
+        function handleDropZoneClick(e) {
+            const dropZone = e.currentTarget;
+            const value = dropZone.dataset.value;
+            const type = dropZone.dataset.type;
+
+            if (!value) return; // 如果是空的，不做任何事
+
+            // 1. 找到來源選項元素並重新啟用
+            const optionsContainer = document.getElementById(`${type}-options`);
+            // 透過 value 和 type 尋找對應的選項元素
+            const sourceTile = Array.from(optionsContainer.children).find(tile => 
+                tile.dataset.value === value && tile.dataset.type === type
+            );
+
+            if (sourceTile) {
+                sourceTile.classList.remove('selected');
+                sourceTile.style.opacity = '1';
+                sourceTile.style.pointerEvents = 'auto';
+            }
+
+            // 2. 清空放置區
+            dropZone.textContent = type === 'initial' ? '聲母' : (type === 'final' ? '韻母' : '聲調');
+            dropZone.dataset.value = '';
+            dropZone.classList.remove('completed-answer', 'text-white', 'bg-blue-500');
+            dropZone.classList.add('bg-white', 'text-gray-500');
+
+            updatePinyinDisplay();
+        }
+
+
+        /**
+         * 設定放置區為初始狀態，並根據題目顯示數量
+         */
+        function resetDropZones() {
+            const currentQ = QUESTIONS[currentQuestionIndex];
+            const isTwoChar = currentQ.pinyin.length === 2;
+
+            pinyinGroup2El.classList.toggle('hidden', !isTwoChar);
+            separatorEl.classList.toggle('hidden', !isTwoChar);
+
+            // 重設所有放置區
+            dropZones.forEach(group => {
+                Object.values(group).forEach(el => {
+                    // 恢復預設文字
+                    el.innerHTML = el.dataset.type === 'initial' ? '聲母' : (el.dataset.type === 'final' ? '韻母' : '聲調');
+                    // 恢復預設樣式
+                    el.classList.remove('completed-answer', 'text-white', 'bg-blue-500');
+                    el.classList.add('bg-white', 'text-gray-500');
+                    el.dataset.value = ''; // 清除已放置的值
+                });
+            });
+            
+            // 重新渲染選項，確保它們都處於未選中狀態
+            generateAndRenderOptions();
+        }
+        
+        /**
+         * 更新國字提示的顯示
+         */
+        function updateQuestionDisplay() {
+            const currentQ = QUESTIONS[currentQuestionIndex];
+            chineseHintEl.textContent = currentQ.chinese;
+        }
+
+        /**
+         * 開始下一題
+         */
+        function nextQuestion() {
+            if (checkCompletion()) {
+                score++;
+                scoreEl.textContent = score;
+            }
+
+            if (currentQuestionIndex < QUESTIONS.length - 1) {
+                currentQuestionIndex++;
+            } else {
+                shuffleArray(QUESTIONS); 
+                currentQuestionIndex = 0;
+                showModal("太棒了！您已完成所有題目！現在將重新開始一輪挑戰，直到時間結束。");
+            }
+            
+            resetDropZones(); // 這裡會呼叫 generateAndRenderOptions
+            updatePinyinDisplay();
+            updateQuestionDisplay();
+            nextButtonEl.disabled = true;
+        }
+
+        /**
+         * 初始化事件監聽
+         */
+        function initListeners() {
+            // 放置區監聽：點擊還原 (只需要設定一次)
+            document.querySelectorAll('.drop-zone').forEach(el => {
+                el.addEventListener('click', handleDropZoneClick);
+            });
+            
+            nextButtonEl.addEventListener('click', nextQuestion);
+            
+            // TTS 語音播放按鈕事件
+            speakButtonEl.addEventListener('click', () => {
+                const currentQ = QUESTIONS[currentQuestionIndex];
+                speakQuestionSound(currentQ.sound);
+            });
+        }
+
+        /**
+         * 開始遊戲計時器
+         */
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = formatTime(timeLeft);
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        /**
+         * 遊戲結束
+         */
+        function endGame() {
+            clearInterval(timerInterval);
+            gameAreaEl.classList.add('hidden');
+            resultAreaEl.classList.remove('hidden');
+            document.getElementById('final-score').textContent = score;
+        }
+
+        /**
+         * 遊戲初始化
+         */
+        function initializeGame() {
+            shuffleArray(QUESTIONS); // 打亂題目順序
+            currentQuestionIndex = 0;
+            score = 0;
+            timeLeft = GAME_DURATION;
+            scoreEl.textContent = score;
+            timerEl.textContent = formatTime(timeLeft);
+            gameAreaEl.classList.remove('hidden');
+            resultAreaEl.classList.add('hidden');
+
+            // 初始題目設定及選項渲染
+            initListeners(); // 初始化事件監聽
+            resetDropZones(); // 這裡會呼叫 generateAndRenderOptions
+            updatePinyinDisplay();
+            updateQuestionDisplay(); 
+            
+            startTimer();
+        }
+
+        // 頁面載入完成後開始遊戲
+        window.onload = initializeGame;
+
+    </script>
 </body>
 </html>
