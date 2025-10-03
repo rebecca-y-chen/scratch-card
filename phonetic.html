@@ -343,8 +343,8 @@
     loadingSpinnerEl.classList.remove('hidden');
 
     // 將空白與特殊符號轉成合法檔名（例如：ㄏㄨˊ ㄉㄧㄝˊ → ㄏㄨˊ_ㄉㄧㄝˊ）
-    const filename = text.replace(/\s+/g, '_') + '.mp3';
-    const audio = new Audio(`${filename}`);
+    const filename = text + '.mp3';
+    const audio = new Audio(filename);
 
     audio.play()
         .then(() => {
