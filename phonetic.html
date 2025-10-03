@@ -344,7 +344,7 @@
 
     // 將空白與特殊符號轉成合法檔名（例如：ㄏㄨˊ ㄉㄧㄝˊ → ㄏㄨˊ_ㄉㄧㄝˊ）
     const filename = text.replace(/\s+/g, '_') + '.mp3';
-    const audio = new Audio(`audio/${filename}`);
+    const audio = new Audio(`${filename}`);
 
     audio.play()
         .then(() => {
