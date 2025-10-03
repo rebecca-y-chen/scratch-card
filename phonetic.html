@@ -253,100 +253,36 @@
         };
         const MAX_OPTIONS_COUNT = 5; // 限制選項數量為 5
 
-        // --- TTS 語音設定 ---
-        const SPEAK_VOICE = "Kore"; 
-const TTS_MODEL = "gemini-2.5-flash-preview-tts";
-const apiKey = typeof __api_key !== 'undefined' ? __api_key : '';
-const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent?key=${apiKey}`;
+       // --- 100% 穩定的語音播放版本（瀏覽器 SpeechSynthesis）---
+function speakQuestionSound(text) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'zh-TW'; // 中文語音
+    utterance.rate = 0.85;    // 可以微調語速（0.1～10），預設 1.0
+    utterance.pitch = 1;      // 語調高低，預設 1.0
+    utterance.volume = 1;     // 音量
 
-let isSpeaking = false; // 新增鎖
-
-async function speakQuestionSound(text) {
-    if (isSpeaking) return; // 防止連點
-    isSpeaking = true;
     speakButtonEl.disabled = true;
     speakerIconEl.classList.add('hidden');
     loadingSpinnerEl.classList.remove('hidden');
 
-    const payload = {
-        contents: [{ parts: [{ text: text }] }],
-        generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: SPEAK_VOICE } } }
-        },
-        model: TTS_MODEL
+    // 播放結束時解除鎖定
+    utterance.onend = () => {
+        speakButtonEl.disabled = false;
+        speakerIconEl.classList.remove('hidden');
+        loadingSpinnerEl.classList.add('hidden');
     };
 
-    const maxRetries = 3;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-            // 加超時機制
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 8000);
+    // 播放錯誤
+    utterance.onerror = (err) => {
+        console.error("SpeechSynthesis 播放錯誤：", err);
+        showModal("語音播放失敗，請稍後再試 🥲");
+        speakButtonEl.disabled = false;
+        speakerIconEl.classList.remove('hidden');
+        loadingSpinnerEl.classList.add('hidden');
+    };
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controller.signal
-            });
-            clearTimeout(timeout);
-
-            if (!response.ok) throw new Error(`TTS API failed with status: ${response.status}`);
-            const result = await response.json();
-
-            // 更嚴謹的判斷 audioPart
-            const audioPart = result?.candidates?.[0]?.content?.parts?.find(p =>
-                p?.inlineData?.data && p?.inlineData?.mimeType?.startsWith("audio/L16")
-            );
-
-            if (!audioPart) {
-                console.error("⚠️ 找不到音訊內容！API 回傳：", result);
-                throw new Error("TTS 未回傳音訊資料");
-            }
-
-            const audioData = audioPart.inlineData.data;
-            const mimeType = audioPart.inlineData.mimeType || '';
-            const rateMatch = mimeType.match(/rate=(\d+)/);
-            const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000; // fallback 預設 24000
-
-            const pcmData = base64ToArrayBuffer(audioData);
-            const pcm16 = new Int16Array(pcmData);
-            const wavBlob = pcmToWav(pcm16, sampleRate);
-            const audioUrl = URL.createObjectURL(wavBlob);
-
-            const audio = new Audio(audioUrl);
-            audio.play();
-
-            audio.onended = () => {
-                isSpeaking = false;
-                speakButtonEl.disabled = false;
-                speakerIconEl.classList.remove('hidden');
-                loadingSpinnerEl.classList.add('hidden');
-            };
-            audio.onerror = (e) => {
-                console.error("Audio playback error:", e);
-                showModal("Oops！語音可能塞車了 🚌💨 請再點一次，或稍後再試唷～");
-                isSpeaking = false;
-                speakButtonEl.disabled = false;
-                speakerIconEl.classList.remove('hidden');
-                loadingSpinnerEl.classList.add('hidden');
-            };
-            return; // 成功播放就結束
-        } catch (error) {
-            console.error("TTS API Error (Attempt " + (attempt + 1) + "):", error);
-            if (attempt < maxRetries - 1) {
-                const delay = Math.pow(2, attempt) * 1000; // 退避
-                await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-                showModal("無法播放語音，請檢查網路或稍後再試。");
-                isSpeaking = false;
-                speakButtonEl.disabled = false;
-                speakerIconEl.classList.remove('hidden');
-                loadingSpinnerEl.classList.add('hidden');
-            }
-        }
-    }
+    // 開始播放
+    window.speechSynthesis.speak(utterance);
 }
 
 
