@@ -557,10 +557,8 @@
                 targetDropZone.classList.remove('bg-white', 'text-gray-500');
                 targetDropZone.classList.add('text-white', 'bg-blue-500');
 
-                // 隱藏選項
-                clickedTile.classList.add('selected');
-                clickedTile.style.opacity = '0.3';
-                clickedTile.style.pointerEvents = 'none';
+                clickedTile.classList.add('animate-ping-once');
+setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
 
                 updatePinyinDisplay();
 
