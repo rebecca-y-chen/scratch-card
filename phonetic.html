@@ -84,6 +84,7 @@
         }
     </style>
 </head>
+
 <body class="p-4 sm:p-8">
 
     <div id="game-container" class="w-full max-w-5xl bg-white shadow-2xl rounded-xl p-6 sm:p-10 border-4 border-yellow-400">
@@ -286,22 +287,26 @@
             modalEl.classList.remove('hidden');
             modalEl.classList.add('flex');
         }
+        
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [array[i], array[j]] = [array[j], array[i]];
             }
         }
+        
         function formatTime(totalSeconds) {
             const minutes = Math.floor(totalSeconds / 60);
             const seconds = totalSeconds % 60;
             return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
         }
+        
         function writeString(view, offset, string) {
             for (let i = 0; i < string.length; i++) {
                 view.setUint8(offset + i, string.charCodeAt(i));
             }
         }
+        
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -311,6 +316,7 @@
             }
             return bytes.buffer;
         }
+        
         function pcmToWav(pcm16, sampleRate) {
             const buffer = new ArrayBuffer(44 + pcm16.byteLength);
             const view = new DataView(buffer);
@@ -337,32 +343,32 @@
             return new Blob([view], { type: 'audio/wav' });
         }
         
-    function speakQuestionSound(text) {
-    speakButtonEl.disabled = true;
-    speakerIconEl.classList.add('hidden');
-    loadingSpinnerEl.classList.remove('hidden');
+        function speakQuestionSound(text) {
+            speakButtonEl.disabled = true;
+            speakerIconEl.classList.add('hidden');
+            loadingSpinnerEl.classList.remove('hidden');
 
-    // 將空白與特殊符號轉成合法檔名（例如：ㄏㄨˊ ㄉㄧㄝˊ → ㄏㄨˊ_ㄉㄧㄝˊ）
-    const safeText = encodeURIComponent(text); // 會把空格變成 %20，中文變成 %E9%...
-    const filename = `${safeText}.mp3`;
-    const audio = new Audio(filename);
+            // 將空白與特殊符號轉成合法檔名（例如：ㄏㄨˊ ㄉㄧㄝˊ → ㄏㄨˊ_ㄉㄧㄝˊ）
+            const safeText = encodeURIComponent(text); // 會把空格變成 %20，中文變成 %E9%...
+            const filename = `audios/${safeText}.mp3`; //🔹指定子資料夾 audios
+            const audio = new Audio(filename);
 
-    audio.play()
-        .then(() => {
-            audio.onended = () => {
+            audio.play()
+            .then(() => {
+                audio.onended = () => {
                 speakButtonEl.disabled = false;
                 speakerIconEl.classList.remove('hidden');
                 loadingSpinnerEl.classList.add('hidden');
-            };
-        })
-        .catch(err => {
-            console.error("播放音訊時發生錯誤：", err);
-            showModal("語音無法播放，請檢查是否有對應音檔");
-            speakButtonEl.disabled = false;
-            speakerIconEl.classList.remove('hidden');
-            loadingSpinnerEl.classList.add('hidden');
-        });
-}
+                };
+            })
+            .catch(err => {
+                console.error("播放音訊時發生錯誤：", err);
+                showModal("語音無法播放，請檢查是否有對應音檔");
+                speakButtonEl.disabled = false;
+                speakerIconEl.classList.remove('hidden');
+                loadingSpinnerEl.classList.add('hidden');
+            });
+        }
 
 
         // --- 遊戲邏輯：點擊模式 (新增動態選項生成) ---
@@ -391,9 +397,7 @@
             return Array.from(optionSet);
         }
 
-        /**
-         * 渲染動態產生的 5 個選項
-         */
+        /**渲染動態產生的 5 個選項**/
         function generateAndRenderOptions() {
             const currentQ = QUESTIONS[currentQuestionIndex];
             
@@ -438,10 +442,7 @@
             renderTiles(toneOptionsEl, toneTilesLimited, 'tone');
         }
 
-        /**
-         * 檢查所有拼讀區是否都被正確填滿
-         * @returns {boolean}
-         */
+        /**檢查所有拼讀區是否都被正確填滿@returns {boolean}**/
         function checkCompletion() {
             const currentQ = QUESTIONS[currentQuestionIndex];
             let isComplete = true;
@@ -461,9 +462,7 @@
             return isComplete;
         }
 
-        /**
-         * 更新目前拼讀區的顯示
-         */
+        /**更新目前拼讀區的顯示**/
         function updatePinyinDisplay() {
             const currentQ = QUESTIONS[currentQuestionIndex];
             let pinyinText = [];
@@ -506,9 +505,7 @@
             }
         }
 
-        /**
-         * 處理點擊選項區注音符號的事件
-         */
+        /**處理點擊選項區注音符號的事件**/
         function handleTileClick(e) {
             const clickedTile = e.currentTarget;
             const value = clickedTile.dataset.value;
@@ -558,7 +555,7 @@
                 targetDropZone.classList.add('text-white', 'bg-blue-500');
 
                 clickedTile.classList.add('animate-ping-once');
-setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
+                setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
 
                 updatePinyinDisplay();
 
@@ -568,9 +565,7 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
             }
         }
         
-        /**
-         * 處理點擊已填入的放置區的事件 (還原)
-         */
+        /**處理點擊已填入的放置區的事件 (還原)**/
         function handleDropZoneClick(e) {
             const dropZone = e.currentTarget;
             const value = dropZone.dataset.value;
@@ -601,9 +596,7 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
         }
 
 
-        /**
-         * 設定放置區為初始狀態，並根據題目顯示數量
-         */
+        /**設定放置區為初始狀態，並根據題目顯示數量**/
         function resetDropZones() {
             const currentQ = QUESTIONS[currentQuestionIndex];
             const isTwoChar = currentQ.pinyin.length === 2;
@@ -627,17 +620,13 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
             generateAndRenderOptions();
         }
         
-        /**
-         * 更新國字提示的顯示
-         */
+        /**更新國字提示的顯示**/
         function updateQuestionDisplay() {
             const currentQ = QUESTIONS[currentQuestionIndex];
             chineseHintEl.textContent = currentQ.chinese;
         }
 
-        /**
-         * 開始下一題
-         */
+        /**開始下一題**/
         function nextQuestion() {
             if (checkCompletion()) {
                 score++;
@@ -658,9 +647,7 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
             nextButtonEl.disabled = true;
         }
 
-        /**
-         * 初始化事件監聽
-         */
+        /**初始化事件監聽**/
         function initListeners() {
             // 放置區監聽：點擊還原 (只需要設定一次)
             document.querySelectorAll('.drop-zone').forEach(el => {
@@ -676,9 +663,7 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
             });
         }
 
-        /**
-         * 開始遊戲計時器
-         */
+        /**開始遊戲計時器**/
         function startTimer() {
             timerInterval = setInterval(() => {
                 timeLeft--;
@@ -691,9 +676,7 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
             }, 1000);
         }
 
-        /**
-         * 遊戲結束
-         */
+        /**遊戲結束**/
         function endGame() {
             clearInterval(timerInterval);
             gameAreaEl.classList.add('hidden');
@@ -701,9 +684,7 @@ setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
             document.getElementById('final-score').textContent = score;
         }
 
-        /**
-         * 遊戲初始化
-         */
+        /**遊戲初始化**/
         function initializeGame() {
             shuffleArray(QUESTIONS); // 打亂題目順序
             currentQuestionIndex = 0;
