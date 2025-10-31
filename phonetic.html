@@ -565,16 +565,11 @@
             // 🔹 定義類型映射，因為 dropZones 使用 i/f/t，而 dataset 使用 initial/final/tone
             const typeMap = { 'initial': 'i', 'final': 'f', 'tone': 't' };
             
-            // 如果點擊的是聲母/韻母/聲調選項，且其值為空字串（代表空聲母/韻母/聲調），
-            // 則其在 DOM 中顯示為空。但空字串應只用於聲母或韻母為空的情況。
-            // 在此邏輯中，我們允許空字串的選項（主要用於聲母或韻母為空的情況）。
-            // **注意**：聲調的空字串代表一聲 (ˉ)。
-            
             let targetDropZone = null;
 
             // 🔹 邏輯：遍歷所有可能的拼音組 (最多兩組)
             for (let i = 0; i < currentQ.pinyin.length; i++) {
-                const expected = currentQ.pinyin[i]; // 期望的正確答案 ({i: 'ㄅ', f: 'ㄚ', t: 'ˉ'})
+                const expected = currentQ.pinyin[i]; // 期望的正確答案 ({i: 'ㄉ', f: 'ㄧㄡ', t: 'ˉ'})
                 const group = dropZones[i];
                 
                 // 獲取當前組中對應類型的放置區元素
@@ -586,15 +581,15 @@
                 // 2. 該放置區的「期望答案」必須與玩家點擊的「符號值」相等 (`expected[dropElKey] === value`)
                 if (!dropEl.dataset.value && expected[dropElKey] === value) {
                     targetDropZone = dropEl;
-                    break; // ✅ 找到該符號正確的歸屬格，就填這裡 (單一歸屬原則)
+                    break; // ✅ 找到該符號正確的歸屬格，就填這裡
                 }
             }
 
-            // 若都沒找到相符位置 (例如：聲母'ㄅ'被點擊，但這題的答案中沒有'ㄅ')
+            // 若都沒找到相符位置
             if (!targetDropZone) {
-                // 特別處理空字串的情況，避免誤報
+                // 如果玩家點擊了空的聲母/韻母選項 ("")，但該題不需要
                 if (value === "") { 
-                    showModal(`您選擇了**空字串**符號，但本題的拼音中，所有屬於「${type}」的空位都不需要空字串來填補！`);
+                    showModal(`您選擇了「空」符號，但本題中所有屬於「${type}」的空位都不需要空字串來填補！`);
                 } else {
                     showModal(`您選擇的符號 (${value}) 並不屬於此題答案的正確位置！`);
                 }
@@ -604,17 +599,19 @@
             // 🔹 成功填入
             targetDropZone.textContent = value === "" ? "（空）" : value; // 對空字串顯示提示
             targetDropZone.dataset.value = value;
+            
+            // 樣式更新：使用藍色背景表示已填入
             targetDropZone.classList.remove('bg-white', 'text-gray-500');
             targetDropZone.classList.add('text-white', 'bg-blue-500');
 
-            // 🔹 灰掉該選項（避免重複用）
-            clickedTile.classList.add('selected');
-            clickedTile.style.opacity = '0.3';
-            clickedTile.style.pointerEvents = 'none';
-
+            // ⚠️ 關鍵修正：這裡不再禁用選項！
+            // 移除原有的: clickedTile.classList.add('selected'); 
+            // 移除原有的: clickedTile.style.opacity = '0.3'; 
+            // 移除原有的: clickedTile.style.pointerEvents = 'none'; 
+            
             updatePinyinDisplay();
-        }
-        
+        }        
+
         /**處理點擊已填入的放置區的事件 (還原)**/
         function handleDropZoneClick(e) {
             const dropZone = e.currentTarget;
@@ -623,18 +620,7 @@
 
             if (!value) return; // 如果是空的，不做任何事
 
-            // 1. 找到來源選項元素並重新啟用
-            const optionsContainer = document.getElementById(`${type}-options`);
-            // 透過 value 和 type 尋找對應的選項元素
-            const sourceTile = Array.from(optionsContainer.children).find(tile => 
-                tile.dataset.value === value && tile.dataset.type === type
-            );
-
-            if (sourceTile) {
-                sourceTile.classList.remove('selected');
-                sourceTile.style.opacity = '1';
-                sourceTile.style.pointerEvents = 'auto';
-            }
+            // 1. **移除**找到來源選項元素並重新啟用的邏輯 (因為選項本身就沒有被禁用)
 
             // 2. 清空放置區
             dropZone.textContent = type === 'initial' ? '聲母' : (type === 'final' ? '韻母' : '聲調');
