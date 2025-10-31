@@ -575,8 +575,8 @@
             for (let i = 0; i < currentQ.pinyin.length; i++) {
                 const expected = currentQ.pinyin[i];
                 const group = dropZones[i];
-                const dropEl = group[type];
-
+                const dropEl = group[typeMap[type]]; 
+                
                 // 如果這格是空的，而且該格的正確答案 == 玩家點的符號
                 if (!dropEl.dataset.value && expected[type] === value) {
                     targetDropZone = dropEl;
