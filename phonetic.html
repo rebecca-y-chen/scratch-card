@@ -398,26 +398,56 @@
             speakerIconEl.classList.add('hidden');
             loadingSpinnerEl.classList.remove('hidden');
 
-            // 將空白與特殊符號轉成合法檔名（例如：ㄏㄨˊ ㄉㄧㄝˊ → ㄏㄨˊ_ㄉㄧㄝˊ）
-            const safeText = encodeURIComponent(text); // 會把空格變成 %20，中文變成 %E9%...
-            const filename = `audios/${safeText}.mp3`; //🔹指定子資料夾 audios
+            const safeText = encodeURIComponent(text);
+            const filename = `audios/${safeText}.mp3`;
             const audio = new Audio(filename);
 
-            audio.play()
-            .then(() => {
-                audio.onended = () => {
-                speakButtonEl.disabled = false;
-                speakerIconEl.classList.remove('hidden');
-                loadingSpinnerEl.classList.add('hidden');
-                };
-            })
-            .catch(err => {
-                console.error("播放音訊時發生錯誤：", err);
-                showModal("語音無法播放，請檢查是否有對應音檔");
-                speakButtonEl.disabled = false;
-                speakerIconEl.classList.remove('hidden');
-                loadingSpinnerEl.classList.add('hidden');
-            });
+            // 💡 修正邏輯：先嘗試播放，如果失敗（通常是未載入或播放權限），
+            // 則監聽 'canplaythrough' 事件，確保音訊已完整載入後再播放。
+
+            function playAudio() {
+                audio.play()
+                .then(() => {
+                    // 成功播放，監聽結束事件
+                    audio.onended = () => {
+                        speakButtonEl.disabled = false;
+                        speakerIconEl.classList.remove('hidden');
+                        loadingSpinnerEl.classList.add('hidden');
+                    };
+                })
+                .catch(err => {
+                    // 播放失敗，可能是因為瀏覽器還沒載入或權限問題。
+                    // 由於這是自動播放，我們將嘗試等待載入完成。
+                    console.error("首次播放嘗試失敗，等待載入中...", err);
+                    
+                    // 1. 檢查是否是瀏覽器權限問題 (但通常只會失敗一次)
+                    if (err.name === "NotAllowedError" || err.name === "AbortError") {
+                        // 如果是權限問題，則直接解除按鈕禁用，讓使用者點擊
+                        speakButtonEl.disabled = false;
+                        speakerIconEl.classList.remove('hidden');
+                        loadingSpinnerEl.classList.add('hidden');
+                        showModal("瀏覽器可能阻擋了自動播放。請點擊喇叭圖示播放音檔。");
+                        return;
+                    }
+
+                    // 2. 如果不是權限問題，監聽載入完成事件
+                    if (audio.readyState < 4) { // 檢查是否尚未載入完成 (HAVE_ENOUGH_DATA)
+                        audio.addEventListener('canplaythrough', () => {
+                            console.log("音訊載入完成，重新嘗試播放。");
+                            playAudio(); // 重新呼叫播放
+                        }, { once: true });
+                    } else {
+                        // 載入已完成但播放仍失敗，顯示錯誤
+                        console.error("音訊載入完成後播放仍失敗:", err);
+                        showModal("語音無法播放，請檢查是否有對應音檔或網路連線。");
+                        speakButtonEl.disabled = false;
+                        speakerIconEl.classList.remove('hidden');
+                        loadingSpinnerEl.classList.add('hidden');
+                    }
+                });
+            }
+
+            playAudio();
         }
 
 
