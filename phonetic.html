@@ -560,66 +560,48 @@
             const clickedTile = e.currentTarget;
             const value = clickedTile.dataset.value;
             const type = clickedTile.dataset.type;
-
             const currentQ = QUESTIONS[currentQuestionIndex];
 
-            // 🔹 收集本題所有正確符號，讓巫婆這類題可判斷「第二個字才有聲母」
+            // 收集該題正確的符號陣列
             const requiredValues = {
-            initial: currentQ.pinyin.map(p => p.i),
-            final: currentQ.pinyin.map(p => p.f),
-            tone: currentQ.pinyin.map(p => p.t)
+                initial: currentQ.pinyin.map(p => p.i),
+                final: currentQ.pinyin.map(p => p.f),
+                tone: currentQ.pinyin.map(p => p.t)
             };
-            
+
             let targetDropZone = null;
 
-            // 尋找第一個匹配類型且為空的放置區
+            // 🔹 改良邏輯：只填入「那一格的正確答案剛好等於這個符號」
             for (let i = 0; i < currentQ.pinyin.length; i++) {
-                const expectedPinyin = currentQ.pinyin[i];
-                const group = dropZones[i]; // group 0 is char 1, group 1 is char 2
-                let dropEl = null;
-                let expectedValue = '';
+                const expected = currentQ.pinyin[i];
+                const group = dropZones[i];
+                const dropEl = group[type];
 
-                if (type === 'initial') {
-                    dropEl = group.i;
-                    expectedValue = expectedPinyin.i;
-                } else if (type === 'final') {
-                    dropEl = group.f;
-                    expectedValue = expectedPinyin.f;
-                } else if (type === 'tone') {
-                    dropEl = group.t;
-                    expectedValue = expectedPinyin.t;
-                }
-
-                // 如果找到空的放置區
-                if (dropEl && !dropEl.dataset.value) {
-                    // ✅ 改成只在「value 是答案的一部分」時才允許填入
-                    // （不再限定順序）
-                    if (requiredValues[type].includes(value)) {
+                // 如果這格是空的，而且該格的正確答案 == 玩家點的符號
+                if (!dropEl.dataset.value && expected[type] === value) {
                     targetDropZone = dropEl;
-                    break; // 找到第一個符合類型的空格就填入
-                    } else {
-                    showModal(`您選擇的符號 (${value}) 並不屬於此題答案的一部分！請再試一次。`);
-                    return;
-                    }
+                    break; // ✅ 找到該符號正確的歸屬格，就填這裡
                 }
             }
 
-            if (targetDropZone) {
-                // 成功填入
-                targetDropZone.textContent = value;
-                targetDropZone.dataset.value = value;
-                targetDropZone.classList.remove('bg-white', 'text-gray-500');
-                targetDropZone.classList.add('text-white', 'bg-blue-500');
-
-                clickedTile.classList.add('animate-ping-once');
-                setTimeout(() => clickedTile.classList.remove('animate-ping-once'), 300);
-
-                updatePinyinDisplay();
-
-            } else {
-                // 沒有空的正確位置
-                showModal(`該類型的所有正確位置都已填滿！如需更改，請點擊已填入的注音符號。`);
+            // 若都沒找到相符位置
+            if (!targetDropZone) {
+                showModal(`您選擇的符號 (${value}) 並不屬於此題答案的正確位置！`);
+                return;
             }
+
+            // 🔹 成功填入
+            targetDropZone.textContent = value;
+            targetDropZone.dataset.value = value;
+            targetDropZone.classList.remove('bg-white', 'text-gray-500');
+            targetDropZone.classList.add('text-white', 'bg-blue-500');
+
+            // 🔹 灰掉該選項（避免重複用）
+            clickedTile.classList.add('selected');
+            clickedTile.style.opacity = '0.3';
+            clickedTile.style.pointerEvents = 'none';
+
+            updatePinyinDisplay();
         }
         
         /**處理點擊已填入的放置區的事件 (還原)**/
