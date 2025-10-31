@@ -562,36 +562,47 @@
             const type = clickedTile.dataset.type;
             const currentQ = QUESTIONS[currentQuestionIndex];
 
-            // 收集該題正確的符號陣列
-            const requiredValues = {
-                initial: currentQ.pinyin.map(p => p.i),
-                final: currentQ.pinyin.map(p => p.f),
-                tone: currentQ.pinyin.map(p => p.t)
-            };
-
+            // 🔹 定義類型映射，因為 dropZones 使用 i/f/t，而 dataset 使用 initial/final/tone
+            const typeMap = { 'initial': 'i', 'final': 'f', 'tone': 't' };
+            
+            // 如果點擊的是聲母/韻母/聲調選項，且其值為空字串（代表空聲母/韻母/聲調），
+            // 則其在 DOM 中顯示為空。但空字串應只用於聲母或韻母為空的情況。
+            // 在此邏輯中，我們允許空字串的選項（主要用於聲母或韻母為空的情況）。
+            // **注意**：聲調的空字串代表一聲 (ˉ)。
+            
             let targetDropZone = null;
 
-            // 🔹 改良邏輯：只填入「那一格的正確答案剛好等於這個符號」
+            // 🔹 邏輯：遍歷所有可能的拼音組 (最多兩組)
             for (let i = 0; i < currentQ.pinyin.length; i++) {
-                const expected = currentQ.pinyin[i];
+                const expected = currentQ.pinyin[i]; // 期望的正確答案 ({i: 'ㄅ', f: 'ㄚ', t: 'ˉ'})
                 const group = dropZones[i];
-                const dropEl = group[typeMap[type]]; 
                 
-                // 如果這格是空的，而且該格的正確答案 == 玩家點的符號
-                if (!dropEl.dataset.value && expected[type] === value) {
+                // 獲取當前組中對應類型的放置區元素
+                const dropElKey = typeMap[type]; // 'i', 'f', or 't'
+                const dropEl = group[dropElKey]; // 實際的 DOM 元素 (initial-drop-1, final-drop-1, etc.)
+                
+                // 檢查條件：
+                // 1. 放置區必須是空的 (`!dropEl.dataset.value`)
+                // 2. 該放置區的「期望答案」必須與玩家點擊的「符號值」相等 (`expected[dropElKey] === value`)
+                if (!dropEl.dataset.value && expected[dropElKey] === value) {
                     targetDropZone = dropEl;
-                    break; // ✅ 找到該符號正確的歸屬格，就填這裡
+                    break; // ✅ 找到該符號正確的歸屬格，就填這裡 (單一歸屬原則)
                 }
             }
 
-            // 若都沒找到相符位置
+            // 若都沒找到相符位置 (例如：聲母'ㄅ'被點擊，但這題的答案中沒有'ㄅ')
             if (!targetDropZone) {
-                showModal(`您選擇的符號 (${value}) 並不屬於此題答案的正確位置！`);
+                // 特別處理空字串的情況，避免誤報
+                if (value === "") { 
+                    showModal(`您選擇了**空字串**符號，但本題的拼音中，所有屬於「${type}」的空位都不需要空字串來填補！`);
+                } else {
+                    showModal(`您選擇的符號 (${value}) 並不屬於此題答案的正確位置！`);
+                }
                 return;
             }
 
             // 🔹 成功填入
-            targetDropZone.textContent = value;
+            targetDropZone.textContent = value === "" ? "（空）" : value; // 對空字串顯示提示
             targetDropZone.dataset.value = value;
             targetDropZone.classList.remove('bg-white', 'text-gray-500');
             targetDropZone.classList.add('text-white', 'bg-blue-500');
