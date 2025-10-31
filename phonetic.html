@@ -562,6 +562,13 @@
             const type = clickedTile.dataset.type;
 
             const currentQ = QUESTIONS[currentQuestionIndex];
+
+            // 🔹 收集本題所有正確符號，讓巫婆這類題可判斷「第二個字才有聲母」
+            const requiredValues = {
+            initial: currentQ.pinyin.map(p => p.i),
+            final: currentQ.pinyin.map(p => p.f),
+            tone: currentQ.pinyin.map(p => p.t)
+            };
             
             let targetDropZone = null;
 
@@ -585,14 +592,14 @@
 
                 // 如果找到空的放置區
                 if (dropEl && !dropEl.dataset.value) {
-                    // 檢查正確性 (確保該符號是題目這個位置所需要的)
-                    if (value === expectedValue) {
-                        targetDropZone = dropEl;
-                        break; // 找到第一個正確的空格，立即停止
+                    // ✅ 改成只在「value 是答案的一部分」時才允許填入
+                    // （不再限定順序）
+                    if (requiredValues[type].includes(value)) {
+                    targetDropZone = dropEl;
+                    break; // 找到第一個符合類型的空格就填入
                     } else {
-                        // 雖然是空的，但是填錯了！ (此符號是錯誤的干擾項)
-                        showModal(`您選擇的符號 (${value}) 並不屬於此題答案的一部分！請再試一次。`);
-                        return;
+                    showModal(`您選擇的符號 (${value}) 並不屬於此題答案的一部分！請再試一次。`);
+                    return;
                     }
                 }
             }
